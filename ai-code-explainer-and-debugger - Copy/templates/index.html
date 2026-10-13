@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code Clinic — Explain &amp; Debug</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Code Clinic home"><span class="brand-mark">{ }</span>codeclinic<span class="brand-ai"> / LAB</span></a>
+      <span class="status"><i></i> LOCAL ANALYSIS</span>
+    </header>
+    <section class="hero">
+      <p class="eyebrow">LESS GUESSING. MORE BUILDING.</p>
+      <h1>Meet your code<br><span>with clarity.</span></h1>
+      <p class="intro">Get a quick walkthrough and catch syntax mistakes in one review.</p>
+    </section>
+    <form method="post" class="workspace">
+      <div class="editor-panel">
+        <div class="panel-head">
+          <div class="file-title"><span class="file-dot"></span><span id="file-name">Untitled snippet</span></div>
+          <div class="editor-tools">
+            <label class="upload-button" for="code-file">↑ <span>Upload file</span></label>
+            <input id="code-file" type="file" accept=".py,.js,.ts,.java,.cpp,.c,.h,.txt,.html,.css,.json,.php,.rb,.go,.rs">
+            <label class="language-select"><select name="language" aria-label="Language">
+              {% for language in ['Python', 'JavaScript', 'Java', 'C++', 'Other'] %}
+              <option value="{{ language }}" {% if selected_language == language %}selected{% endif %}>{{ language }}</option>
+              {% endfor %}
+            </select></label>
+          </div>
+        </div>
+        <label class="sr-only" for="code">Paste or write code to review</label>
+        <textarea id="code" name="code" placeholder="# Paste your code here, or upload a file..." spellcheck="false">{{ code }}</textarea>
+        <div class="editor-foot"><span id="editor-hint">Your code stays in this local app</span><span><b id="line-count">{{ code.splitlines()|length }}</b> lines</span></div>
+      </div>
+      <button name="action" value="analyze" class="button primary"><span>✳</span> Explain &amp; find mistakes <span class="arrow">→</span></button>
+    </form>
+
+    {% if result %}
+      {% if result.empty %}
+      <section class="empty-state warning" aria-live="polite"><span class="empty-icon">!</span><div><strong>{{ result.issues[0].message }}</strong><p>Paste code above or choose a file to begin.</p></div></section>
+      {% else %}
+      <section class="report" aria-live="polite">
+        <div class="report-head"><div><p class="eyebrow">YOUR CODE REVIEW</p><h2>Here’s what’s happening</h2></div>
+          {% if result.count %}<span class="count-badge">{{ result.count }} {{ 'issue' if result.count == 1 else 'issues' }}</span>{% else %}<span class="count-badge clean">✓ Looks good</span>{% endif %}
+        </div>
+        <div class="report-grid">
+          <article class="report-card explanation-card"><div class="card-title"><span class="card-icon explain-icon">✳</span><div><h3>Code walkthrough</h3><p>A quick line-by-line guide</p></div></div>
+            <ol class="explanation-list">{% for line in result.explanations %}<li>{{ line }}</li>{% endfor %}</ol>
+          </article>
+          <article class="report-card debug-card"><div class="card-title"><span class="card-icon {% if result.count %}bug-icon{% else %}ok-icon{% endif %}">{% if result.count %}!{% else %}✓{% endif %}</span><div><h3>{% if result.count %}Mistakes to fix{% else %}Syntax check{% endif %}</h3><p>{% if result.count %}The checker found something to review{% else %}No syntax issues detected{% endif %}</p></div></div>
+            {% if result.count %}<ul class="issue-list">{% for issue in result.issues %}<li><span class="issue-line">{% if issue.line %}L{{ issue.line }}{% else %}—{% endif %}</span><span>{{ issue.message }}</span></li>{% endfor %}</ul>
+            {% else %}<p class="clean-copy">Your code passed the available syntax checks.</p>{% endif %}
+            {% if selected_language != 'Python' %}<p class="note">{{ selected_language }} checks currently focus on bracket matching.</p>{% endif %}
+          </article>
+        </div>
+        <p class="disclaimer">Walkthroughs are generated with lightweight local rules. They’re a helpful guide, not a full AI review.</p>
+      </section>
+      {% endif %}
+    {% else %}
+    <section class="empty-state"><span class="empty-icon">✳</span><div><strong>Your code review will appear here</strong><p>Upload a file or paste code, then run the combined review.</p></div><span class="empty-arrow">↓</span></section>
+    {% endif %}
+    <footer><span class="footer-mark">{ }</span> A calmer way to untangle code.</footer>
+  </main>
+  <script>
+    const editor = document.getElementById('code');
+    const filePicker = document.getElementById('code-file');
+    const lineCount = document.getElementById('line-count');
+    const fileName = document.getElementById('file-name');
+    editor.addEventListener('input', () => lineCount.textContent = editor.value ? editor.value.split('\n').length : 0);
+    filePicker.addEventListener('change', async () => {
+      const file = filePicker.files[0];
+      if (!file) return;
+      editor.value = await file.text();
+      fileName.textContent = file.name;
+      document.getElementById('editor-hint').textContent = 'File loaded — ready to review';
+      lineCount.textContent = editor.value ? editor.value.split('\n').length : 0;
+      const ext = file.name.split('.').pop().toLowerCase();
+      const language = ext === 'py' ? 'Python' : ['js','ts'].includes(ext) ? 'JavaScript' : ext === 'java' ? 'Java' : ['cpp','c','h'].includes(ext) ? 'C++' : 'Other';
+      document.querySelector('select[name="language"]').value = language;
+    });
+  </script>
+</body>
+</html>
